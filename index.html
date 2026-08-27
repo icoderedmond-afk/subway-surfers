@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Endless Runner - Explosive Shield</title>
+  <title>3D Endless Runner - Fixed & Smooth</title>
   <style>
     body {
       margin: 0;
@@ -76,42 +76,44 @@
     let score = 0;
     let coinsCollected = 0;
     
-    const INITIAL_SPEED = 0.75;
-    const SPEED_INCREMENT = 0.0004;
+    const INITIAL_SPEED = 0.6;
+    const SPEED_INCREMENT = 0.0002;
     let speed = INITIAL_SPEED;
     let isGameOver = false;
 
-    // SHIELD / EXPLOSION MECHANICS
+    // SHIELD & EXPLOSIONS
     let isShieldActive = false;
     let shieldCooldown = false;
     let particles = [];
 
     // JUMP PHYSICS
-    let playerY = 0.9;
+    const BASE_Y = 0.9;
+    let playerY = BASE_Y;
     let velocityY = 0;
-    const gravity = -0.025;
-    const jumpPower = 0.5;
+    const gravity = -0.02;
+    const jumpPower = 0.45;
     let isGrounded = true;
 
-    // Scene setup
+    // SCENE SETUP
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1e272e);
-    scene.fog = new THREE.Fog(0x1e272e, 10, 100);
+    scene.fog = new THREE.Fog(0x1e272e, 10, 120);
 
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // LIGHTS
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    // Track/Ground
+    // TRACK
     const trackGeometry = new THREE.PlaneGeometry(12, 500);
     const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x3d3d3d });
     const track = new THREE.Mesh(trackGeometry, trackMaterial);
@@ -119,7 +121,7 @@
     track.position.z = -200;
     scene.add(track);
 
-    // Rails
+    // RAILS
     LANES.forEach(x => {
       const railGeo = new THREE.BoxGeometry(0.2, 0.1, 500);
       const railMat = new THREE.MeshLambertMaterial({ color: 0x718093 });
@@ -131,14 +133,14 @@
       scene.add(rail2);
     });
 
-    // Player
+    // PLAYER
     const playerGeo = new THREE.BoxGeometry(1, 1.8, 1);
     const playerMat = new THREE.MeshLambertMaterial({ color: 0x00d2d3 });
     const player = new THREE.Mesh(playerGeo, playerMat);
-    player.position.set(LANES[currentLane], playerY, 0);
+    player.position.set(LANES[currentLane], BASE_Y, 0);
     scene.add(player);
 
-    // Shield Visual (Glowing aura around player)
+    // SHIELD MESH
     const shieldGeo = new THREE.SphereGeometry(1.4, 16, 16);
     const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00d2d3, wireframe: true, transparent: true, opacity: 0.8 });
     const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
@@ -192,10 +194,9 @@
       coins.push(coin);
     }
 
-    // Spawn Explosion Effect
     function createExplosion(position) {
-      const particleCount = 30;
-      const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+      const particleCount = 25;
+      const geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
       
       for (let i = 0; i < particleCount; i++) {
         const material = new THREE.MeshBasicMaterial({
@@ -204,12 +205,11 @@
         const particle = new THREE.Mesh(geometry, material);
         particle.position.copy(position);
 
-        // Random velocity direction
         particle.userData = {
-          vx: (Math.random() - 0.5) * 0.8,
-          vy: Math.random() * 0.8,
-          vz: (Math.random() - 0.5) * 0.8,
-          life: 1.0 // opacity/fade counter
+          vx: (Math.random() - 0.5) * 0.6,
+          vy: Math.random() * 0.6 + 0.2,
+          vz: (Math.random() - 0.5) * 0.6,
+          life: 1.0
         };
 
         scene.add(particle);
@@ -217,33 +217,31 @@
       }
     }
 
-    // Populate initial obstacles
-    for (let z = -20; z > -250; z -= 20) {
+    // INITIAL SPAWNS
+    for (let z = -30; z > -250; z -= 30) {
       if (Math.random() < 0.6) spawnTrain(z);
       else spawnRamp(z);
       
       const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
       for (let c = 0; c < 2; c++) {
-        spawnCoin(z - (c * 2), coinLane);
+        spawnCoin(z - (c * 2.5), coinLane);
       }
     }
 
-    // CONTROLS
+    // INPUT LOGIC
     document.addEventListener('keydown', (e) => {
       if (isGameOver) return;
 
-      if ((e.key === 'ArrowLeft' || e.key === 'a') && currentLane > 0) {
+      if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') && currentLane > 0) {
         currentLane--;
       }
-      if ((e.key === 'ArrowRight' || e.key === 'd') && currentLane < LANES.length - 1) {
+      if ((e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') && currentLane < LANES.length - 1) {
         currentLane++;
       }
-      if ((e.key === 'ArrowUp' || e.key === 'w') && isGrounded) {
+      if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') && isGrounded) {
         velocityY = jumpPower;
         isGrounded = false;
       }
-
-      // SPACEBAR ACTIVATES SHIELD
       if (e.key === ' ' && !isShieldActive && !shieldCooldown) {
         activateShield();
       }
@@ -261,169 +259,4 @@
       shieldMesh.visible = false;
       shieldCooldown = true;
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: RECHARGING...";
-      document.getElementById('shield-status').style.color = "#ff4757";
-
-      // Cooldown timer (5 seconds)
-      setTimeout(() => {
-        shieldCooldown = false;
-        document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: READY";
-        document.getElementById('shield-status').style.color = "#00d2d3";
-      }, 5000);
-    }
-
-    function animate() {
-      if (isGameOver) return;
-      requestAnimationFrame(animate);
-
-      speed += SPEED_INCREMENT;
-      score += Math.floor(speed * 3);
-      document.getElementById('score').innerText = score;
-
-      player.position.x += (LANES[currentLane] - player.position.x) * 0.35;
-
-      player.position.y += velocityY;
-      velocityY += gravity;
-
-      if (player.position.y <= 0.9) {
-        player.position.y = 0.9;
-        velocityY = 0;
-        isGrounded = true;
-      }
-
-      // Pulse shield animation
-      if (isShieldActive) {
-        shieldMesh.rotation.y += 0.05;
-      }
-
-      // Update Particle Animations
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.position.x += p.userData.vx;
-        p.position.y += p.userData.vy;
-        p.position.z += p.userData.vz;
-        p.userData.life -= 0.03;
-
-        p.scale.setScalar(p.userData.life);
-
-        if (p.userData.life <= 0) {
-          scene.remove(p);
-          particles.splice(i, 1);
-        }
-      }
-
-      // Obstacle interactions
-      for (let i = obstacles.length - 1; i >= 0; i--) {
-        const obs = obstacles[i];
-        obs.position.z += speed;
-
-        const playerBox = new THREE.Box3().setFromObject(player);
-        const obsBox = new THREE.Box3().setFromObject(obs);
-
-        if (playerBox.intersectsBox(obsBox)) {
-          if (obs.userData.type === 'ramp') {
-            velocityY = jumpPower * 1.25;
-            isGrounded = false;
-          } else if (obs.userData.type === 'train') {
-            if (isShieldActive) {
-              // EXPLODE TRAIN & DEACTIVATE SHIELD
-              createExplosion(obs.position);
-              scene.remove(obs);
-              obstacles.splice(i, 1);
-              deactivateShield();
-              continue;
-            } else {
-              triggerGameOver();
-            }
-          }
-        }
-
-        if (obs.position.z > 10) {
-          scene.remove(obs);
-          obstacles.splice(i, 1);
-          
-          if (Math.random() < 0.6) spawnTrain(-220);
-          else spawnRamp(-220);
-        }
-      }
-
-      // Coin collection
-      for (let i = coins.length - 1; i >= 0; i--) {
-        const coin = coins[i];
-        coin.position.z += speed;
-        coin.rotation.z += 0.08;
-
-        const playerBox = new THREE.Box3().setFromObject(player);
-        const coinBox = new THREE.Box3().setFromObject(coin);
-
-        if (playerBox.intersectsBox(coinBox)) {
-          scene.remove(coin);
-          coins.splice(i, 1);
-          coinsCollected++;
-          document.getElementById('coins').innerText = coinsCollected;
-        } else if (coin.position.z > 10) {
-          scene.remove(coin);
-          coins.splice(i, 1);
-          
-          if (Math.random() < 0.5) {
-            const lane = LANES[Math.floor(Math.random() * LANES.length)];
-            spawnCoin(-220, lane);
-          }
-        }
-      }
-
-      renderer.render(scene, camera);
-    }
-
-    function triggerGameOver() {
-      isGameOver = true;
-      document.getElementById('final-score').innerText = score;
-      document.getElementById('final-coins').innerText = coinsCollected;
-      document.getElementById('game-over').style.display = 'block';
-    }
-
-    function resetGame() {
-      obstacles.forEach(obs => scene.remove(obs));
-      coins.forEach(coin => scene.remove(coin));
-      particles.forEach(p => scene.remove(p));
-      obstacles = [];
-      coins = [];
-      particles = [];
-
-      score = 0;
-      coinsCollected = 0;
-      speed = INITIAL_SPEED;
-      currentLane = 1;
-      player.position.set(LANES[1], 0.9, 0);
-      isGameOver = false;
-
-      isShieldActive = false;
-      shieldCooldown = false;
-      shieldMesh.visible = false;
-      document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: READY";
-      document.getElementById('shield-status').style.color = "#00d2d3";
-
-      document.getElementById('score').innerText = '0';
-      document.getElementById('coins').innerText = '0';
-      document.getElementById('game-over').style.display = 'none';
-
-      for (let z = -20; z > -250; z -= 20) {
-        if (Math.random() < 0.6) spawnTrain(z);
-        else spawnRamp(z);
-
-        const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
-        spawnCoin(z, coinLane);
-      }
-
-      animate();
-    }
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    animate();
-  </script>
-</body>
-</html>
+      document.getElementById('shield-status
