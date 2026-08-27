@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Endless Runner</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #000;
+    }
+    #ui {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: #fff;
+      font-size: 24px;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      z-index: 10;
+    }
+    #game-over {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 30px;
+      border-radius: 10px;
+      z-index: 20;
+    }
+    #game-over button {
+      padding: 10px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      background-color: #ff4757;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    #game-over button:hover {
+      background-color: #ff6b81;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <div id="ui">
+    Score: <span id="score">0</span> | Coins: <span id="coins">0</span>
+  </div>
+
+  <div id="game-over">
+    <h1>GAME OVER</h1>
+    <p>Final Score: <span id="final-score">0</span></p>
+    <p>Coins Collected: <span id="final-coins">0</span></p>
+    <button onclick="resetGame()">Play Again</button>
+  </div>
+
+  <script>
+    // --- GAME SETUP & VARIABLES ---
+    const LANES = [-3, 0, 3];
+    let currentLane = 1; // 0: Left, 1: Center, 2: Right
+    let score = 0;
+    let coinsCollected = 0;
+    let speed = 0.4;
+    let isGameOver = false;
+
+    // Player Movement & Physics
+    let playerY = 0.5;
+    let velocityY = 0;
+    const gravity = -0.015;
+    const jumpPower = 0.35;
+    let isGrounded = true;
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1e272e);
+    scene.fog = new THREE.Fog(0x1e272e, 10, 90);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 20, 10);
+    scene.add(dirLight);
+
+    // --- OBJECT CREATION ---
+
+    // Track/Ground
+    const trackGeometry = new THREE.PlaneGeometry(12, 500);
+    const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x3d3d3d });
+    const track = new THREE.Mesh(trackGeometry, trackMaterial);
+    track.rotation.x = -Math.PI / 2;
+    track.position.z = -200;
+    scene.add(track);
+
+    // Rails
+    LANES.forEach(x => {
+      const railGeo = new THREE.BoxGeometry(0.2, 0.1, 500);
+      const railMat = new THREE.MeshLambertMaterial({ color: 0x718093 });
+      const rail1 = new THREE.Mesh(railGeo, railMat);
+      const rail2 = new THREE.Mesh(railGeo, railMat);
+      rail1.position.set(x - 0.8, 0.05, -200);
+      rail2.position.set(x + 0.8, 0.05, -200);
+      scene.add(rail1);
+      scene.add(rail2);
+    });
+
+    // Player
+    const playerGeo = new THREE.BoxGeometry(1, 1.8, 1);
+    const playerMat = new THREE.MeshLambertMaterial({ color: 0x00d2d3 });
+    const player = new THREE.Mesh(playerGeo, playerMat);
+    player.position.set(LANES[currentLane], playerY, 0);
+    scene.add(player);
+
+    // Camera initial position relative to player
+    camera.position.set(0, 5, 8);
+    camera.lookAt(0, 1.5, -5);
+
+    // Arrays to track active obstacles
+    let obstacles = [];
+    let coins = [];
+
+    // --- SPAWN LOGIC ---
+
+    function spawnTrain(zPos) {
+      const lane = LANES[Math.floor(Math.random() * LANES.length)];
+      const trainGeo = new THREE.BoxGeometry(2.2, 3, 12);
+      const trainMat = new THREE.MeshLambertMaterial({ color: 0xff4757 });
+      const train = new THREE.Mesh(trainGeo, trainMat);
+      train.position.set(lane, 1.5, zPos);
+      train.userData = { type: 'train' };
+      scene.add(train);
+      obstacles.push(train);
+    }
+
+    function spawnRamp(zPos) {
+      const lane = LANES[Math.floor(Math.random() * LANES.length)];
+      
+      // Create a wedge shape for the ramp
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0);
+      shape.lineTo(0, 1.5);
+      shape.lineTo(6, 0);
+      shape.closePath();
+
+      const extrudeSettings = { depth: 2.2, bevelEnabled: false };
+      const rampGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      const rampMat = new THREE.MeshLambertMaterial({ color: 0xffa502 });
+      const ramp = new THREE.Mesh(rampGeo, rampMat);
+      
+      ramp.rotation.y = Math.PI / 2;
+      ramp.position.set(lane - 1.1, 0, zPos);
+      ramp.userData = { type: 'ramp', lane: lane };
+      scene.add(ramp);
+      obstacles.push(ramp);
+    }
+
+    function spawnCoin(zPos, lane, height = 0.8) {
+      const coinGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
+      const coinMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
+      const coin = new THREE.Mesh(coinGeo, coinMat);
+      coin.rotation.x = Math.PI / 2;
+      coin.position.set(lane, height, zPos);
+      scene.add(coin);
+      coins.push(coin);
+    }
+
+    // Populate initial obstacles
+    for (let z = -30; z > -250; z -= 30) {
+      const rand = Math.random();
+      if (rand < 0.5) {
+        spawnTrain(z);
+      } else {
+        spawnRamp(z);
+      }
+      
+      // Spawn coins along lanes
+      const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
+      for (let c = 0; c < 3; c++) {
+        spawnCoin(z - (c * 3), coinLane);
+      }
+    }
+
+    // --- INPUT CONTROLS ---
+
+    document.addEventListener('keydown', (e) => {
+      if (isGameOver) return;
+
+      if ((e.key === 'ArrowLeft' || e.key === 'a') && currentLane > 0) {
+        currentLane--;
+      }
+      if ((e.key === 'ArrowRight' || e.key === 'd') && currentLane < LANES.length - 1) {
+        currentLane++;
+      }
+      if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') && isGrounded) {
+        velocityY = jumpPower;
+        isGrounded = false;
+      }
+    });
+
+    // --- GAME LOOP ---
+
+    function animate() {
+      if (isGameOver) return;
+      requestAnimationFrame(animate);
+
+      // Increase speed gradually
+      speed += 0.0001;
+      score += Math.floor(speed * 2);
+      document.getElementById('score').innerText = score;
+
+      // Smooth horizontal movement
+      player.position.x += (LANES[currentLane] - player.position.x) * 0.2;
+
+      // Jump & Gravity physics
+      player.position.y += velocityY;
+      velocityY += gravity;
+
+      // Ground collision check
+      if (player.position.y <= 0.9) {
+        player.position.y = 0.9;
+        velocityY = 0;
+        isGrounded = true;
+      }
+
+      // Move & Handle Obstacles
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.position.z += speed;
+
+        // Collision detection box
+        const playerBox = new THREE.Box3().setFromObject(player);
+        const obsBox = new THREE.Box3().setFromObject(obs);
+
+        if (playerBox.intersectsBox(obsBox)) {
+          if (obs.userData.type === 'ramp') {
+            // Auto-jump when hitting a ramp
+            velocityY = jumpPower * 1.2;
+            isGrounded = false;
+          } else if (obs.userData.type === 'train') {
+            triggerGameOver();
+          }
+        }
+
+        // Recycle obstacles once off-screen
+        if (obs.position.z > 10) {
+          scene.remove(obs);
+          obstacles.splice(i, 1);
+          
+          // Spawn new ones far ahead
+          if (Math.random() < 0.6) {
+            spawnTrain(-220);
+          } else {
+            spawnRamp(-220);
+          }
+        }
+      }
+
+      // Move & Handle Coins
+      for (let i = coins.length - 1; i >= 0; i--) {
+        const coin = coins[i];
+        coin.position.z += speed;
+        coin.rotation.z += 0.05; // Spin animation
+
+        const playerBox = new THREE.Box3().setFromObject(player);
+        const coinBox = new THREE.Box3().setFromObject(coin);
+
+        if (playerBox.intersectsBox(coinBox)) {
+          scene.remove(coin);
+          coins.splice(i, 1);
+          coinsCollected++;
+          document.getElementById('coins').innerText = coinsCollected;
+        } else if (coin.position.z > 10) {
+          scene.remove(coin);
+          coins.splice(i, 1);
+          
+          // Respawn coin ahead
+          if (Math.random() < 0.4) {
+            const lane = LANES[Math.floor(Math.random() * LANES.length)];
+            spawnCoin(-220, lane);
+          }
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function triggerGameOver() {
+      isGameOver = true;
+      document.getElementById('final-score').innerText = score;
+      document.getElementById('final-coins').innerText = coinsCollected;
+      document.getElementById('game-over').style.display = 'block';
+    }
+
+    function resetGame() {
+      // Clear existing obstacles and coins
+      obstacles.forEach(obs => scene.remove(obs));
+      coins.forEach(coin => scene.remove(coin));
+      obstacles = [];
+      coins = [];
+
+      // Reset variables
+      score = 0;
+      coinsCollected = 0;
+      speed = 0.4;
+      currentLane = 1;
+      player.position.set(LANES[1], 0.9, 0);
+      isGameOver = false;
+
+      document.getElementById('score').innerText = '0';
+      document.getElementById('coins').innerText = '0';
+      document.getElementById('game-over').style.display = 'none';
+
+      // Re-populate objects
+      for (let z = -30; z > -250; z -= 30) {
+        if (Math.random() < 0.5) spawnTrain(z);
+        else spawnRamp(z);
+
+        const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
+        spawnCoin(z, coinLane);
+      }
+
+      animate();
+    }
+
+    // Handle Window Resizing
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Start Game Loop
+    animate();
+  </script>
+</body>
+</html>
