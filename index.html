@@ -354,10 +354,8 @@
     function spawnChunk(zPos) {
       const rand = Math.random();
       if (rand < 0.40) {
-        // Single train
         spawnTrain(zPos);
       } else if (rand < 0.65) {
-        // Double obstacle wall (leave one lane open!)
         const blockedLanes = [...LANES].sort(() => 0.5 - Math.random()).slice(0, 2);
         blockedLanes.forEach(lane => spawnTrain(zPos, lane));
       } else if (rand < 0.80) {
@@ -368,12 +366,12 @@
         spawnPowerUp(zPos);
       }
       
-      const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
-      spawnCoin(zPos - 2, coinLane);
-      // Extra bonus coins packed tightly
-      if (Math.random() < 0.5) {
-        spawnCoin(zPos - 4, coinLane);
-      }
+      // Spawning rich lines of coins across all lanes for high density collection
+      LANES.forEach(lane => {
+        spawnCoin(zPos - 2, lane);
+        spawnCoin(zPos - 5, lane);
+        spawnCoin(zPos - 8, lane);
+      });
     }
 
     function createExplosion(position) {
