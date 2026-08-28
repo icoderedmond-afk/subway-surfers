@@ -150,8 +150,8 @@
     let score = 0;
     let coinsCollected = 0;
     
-    const INITIAL_SPEED = 35;
-    const MAX_SPEED = 75;
+    const INITIAL_SPEED = 30;
+    const MAX_SPEED = 65;
     let speed = INITIAL_SPEED;
     let isGameOver = false;
 
@@ -246,7 +246,7 @@
     let tunnels = [];
     let coins = [];
     let powerups = [];
-    let nextSpawnZ = -25;
+    let nextSpawnZ = -30;
 
     function spawnTrain(zPos, laneOverride = null) {
       const lane = laneOverride !== null ? laneOverride : LANES[Math.floor(Math.random() * LANES.length)];
@@ -353,15 +353,15 @@
 
     function spawnChunk(zPos) {
       const rand = Math.random();
-      // Increased chance of empty sections (safe paths)
-      if (rand < 0.25) {
-        // Safe empty zone, just coins
-      } else if (rand < 0.55) {
+      // Generous safe zones (even higher chance of empty sections)
+      if (rand < 0.45) {
+        // Safe path with lots of coins
+      } else if (rand < 0.65) {
         spawnTrain(zPos);
-      } else if (rand < 0.70) {
-        const blockedLanes = [...LANES].sort(() => 0.5 - Math.random()).slice(0, 2);
-        blockedLanes.forEach(lane => spawnTrain(zPos, lane));
-      } else if (rand < 0.85) {
+      } else if (rand < 0.75) {
+        // Only allow single trains instead of double walls to keep it very relaxed
+        spawnTrain(zPos);
+      } else if (rand < 0.88) {
         spawnRamp(zPos);
       } else if (rand < 0.95) {
         spawnTunnel(zPos);
@@ -399,9 +399,9 @@
       }
     }
 
-    for (let z = -25; z > -300; z -= 15) {
+    for (let z = -30; z > -300; z -= 18) {
       spawnChunk(z);
-      nextSpawnZ = z - 15;
+      nextSpawnZ = z - 18;
     }
 
     document.addEventListener('keydown', (e) => {
@@ -475,14 +475,14 @@
       }
 
       if (speed < MAX_SPEED) {
-        speed += 1.0 * delta;
+        speed += 0.8 * delta;
       }
       score += Math.floor(currentSpeed * delta * 15);
       document.getElementById('score').innerText = score;
 
       if (nextSpawnZ > -player.position.z - 300) {
         spawnChunk(nextSpawnZ);
-        nextSpawnZ -= 15;
+        nextSpawnZ -= 18;
       }
 
       if (isMagnetActive) {
@@ -679,12 +679,12 @@
       document.getElementById('coins').innerText = '0';
       document.getElementById('game-over').style.display = 'none';
 
-      nextSpawnZ = -25;
+      nextSpawnZ = -30;
       clock.start();
 
-      for (let z = -25; z > -300; z -= 15) {
+      for (let z = -30; z > -300; z -= 18) {
         spawnChunk(z);
-        nextSpawnZ = z - 15;
+        nextSpawnZ = z - 18;
       }
 
       animate();
