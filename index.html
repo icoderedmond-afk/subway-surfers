@@ -31,7 +31,7 @@
       text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
       z-index: 10;
     }
-    #shield-status, #magnet-status {
+    #shield-status, #magnet-status, #slowmo-status {
       margin-top: 5px;
       font-size: 16px;
       color: #00d2d3;
@@ -72,6 +72,7 @@
     Score: <span id="score">0</span> | Coins: <span id="coins">0</span>
     <div id="shield-status">Shield [SPACEBAR]: READY</div>
     <div id="magnet-status" style="color: #ff9f43;">Magnet: READY</div>
+    <div id="slowmo-status" style="color: #00cec9;">Slow-Mo: READY</div>
   </div>
 
   <div id="stats-panel">
@@ -123,6 +124,14 @@
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
         osc.start(now);
         osc.stop(now + 0.3);
+      } else if (type === 'powerup') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.25);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
       } else if (type === 'crash') {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(100, now);
@@ -150,8 +159,13 @@
     let isShieldActive = false;
     let shieldCooldown = false;
     let isInvulnerable = false;
+    
     let isMagnetActive = false;
     let magnetTimer = 0;
+
+    let isSlowMoActive = false;
+    let slowMoTimer = 0;
+
     let particles = [];
 
     const BASE_Y = 0.9;
@@ -251,19 +265,16 @@
     function spawnTunnel(zPos) {
       const tunnelGroup = new THREE.Group();
       
-      // Left wall
       const wallGeo = new THREE.BoxGeometry(0.5, 4, 15);
       const wallMat = new THREE.MeshLambertMaterial({ color: 0x353b48 });
       const leftWall = new THREE.Mesh(wallGeo, wallMat);
       leftWall.position.set(-5.5, 2, 0);
       tunnelGroup.add(leftWall);
 
-      // Right wall
       const rightWall = new THREE.Mesh(wallGeo, wallMat);
       rightWall.position.set(5.5, 2, 0);
       tunnelGroup.add(rightWall);
 
-      // Ceiling roof
       const roofGeo = new THREE.BoxGeometry(12, 0.5, 15);
       const roofMat = new THREE.MeshLambertMaterial({ color: 0x2f3640 });
       const roof = new THREE.Mesh(roofGeo, roofMat);
@@ -285,15 +296,17 @@
       coins.push(coin);
     }
 
-    function spawnMagnetPowerUp(zPos) {
+    function spawnPowerUp(zPos) {
       const lane = LANES[Math.floor(Math.random() * LANES.length)];
-      const magGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-      const magMat = new THREE.MeshLambertMaterial({ color: 0xefa8e4 });
-      const mag = new THREE.Mesh(magGeo, magMat);
-      mag.position.set(lane, 1.0, zPos);
-      mag.userData = { type: 'magnet' };
-      scene.add(mag);
-      powerups.push(mag);
+      const type = Math.random() < 0.5 ? 'magnet' : 'slowmo';
+      
+      const geo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+      const mat = new THREE.MeshLambertMaterial({ color: type === 'magnet' ? 0xefa8e4 : 0x00cec9 });
+      const powerup = new THREE.Mesh(geo, mat);
+      powerup.position.set(lane, 1.0, zPos);
+      powerup.userData = { type: type };
+      scene.add(powerup);
+      powerups.push(powerup);
     }
 
     function createExplosion(position) {
@@ -321,10 +334,10 @@
 
     for (let z = -20; z > -220; z -= 18) {
       const rand = Math.random();
-      if (rand < 0.60) spawnTrain(z);
-      else if (rand < 0.80) spawnRamp(z);
-      else if (rand < 0.95) spawnTunnel(z);
-      else spawnMagnetPowerUp(z);
+      if (rand < 0.55) spawnTrain(z);
+      else if (rand < 0.75) spawnRamp(z);
+      else if (rand < 0.90) spawnTunnel(z);
+      else spawnPowerUp(z);
       
       const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
       spawnCoin(z - 2, coinLane);
@@ -377,9 +390,16 @@
 
     function activateMagnet() {
       isMagnetActive = true;
-      magnetTimer = 2.5;
-      playSound('shield');
+      magnetTimer = 3.5;
+      playSound('powerup');
       document.getElementById('magnet-status').innerText = "Magnet: ACTIVE!";
+    }
+
+    function activateSlowMo() {
+      isSlowMoActive = true;
+      slowMoTimer = 4.0;
+      playSound('powerup');
+      document.getElementById('slowmo-status').innerText = "Slow-Mo: ACTIVE!";
     }
 
     function animate() {
@@ -388,10 +408,16 @@
 
       const delta = clock.getDelta();
 
+      // Effective speed is reduced during Slow-Mo
+      let currentSpeed = speed;
+      if (isSlowMoActive) {
+        currentSpeed *= 0.5;
+      }
+
       if (speed < MAX_SPEED) {
         speed += 1.5 * delta;
       }
-      score += Math.floor(speed * delta * 15);
+      score += Math.floor(currentSpeed * delta * 15);
       document.getElementById('score').innerText = score;
 
       if (isMagnetActive) {
@@ -400,6 +426,15 @@
         if (magnetTimer <= 0) {
           isMagnetActive = false;
           document.getElementById('magnet-status').innerText = "Magnet: READY";
+        }
+      }
+
+      if (isSlowMoActive) {
+        slowMoTimer -= delta;
+        document.getElementById('slowmo-status').innerText = `Slow-Mo: ${Math.ceil(slowMoTimer)}s`;
+        if (slowMoTimer <= 0) {
+          isSlowMoActive = false;
+          document.getElementById('slowmo-status').innerText = "Slow-Mo: READY";
         }
       }
 
@@ -438,7 +473,7 @@
 
       for (let i = obstacles.length - 1; i >= 0; i--) {
         const obs = obstacles[i];
-        obs.position.z += speed * delta;
+        obs.position.z += currentSpeed * delta;
 
         const obsBox = new THREE.Box3().setFromObject(obs);
 
@@ -468,46 +503,52 @@
           obstacles.splice(i, 1);
           
           const rand = Math.random();
-          if (rand < 0.60) spawnTrain(-220);
-          else if (rand < 0.80) spawnRamp(-220);
-          else spawnTunnel(-220);
+          if (rand < 0.55) spawnTrain(-220);
+          else if (rand < 0.75) spawnRamp(-220);
+          else if (rand < 0.90) spawnTunnel(-220);
+          else spawnPowerUp(-220);
         }
       }
 
       for (let i = tunnels.length - 1; i >= 0; i--) {
         const tun = tunnels[i];
-        tun.position.z += speed * delta;
+        tun.position.z += currentSpeed * delta;
 
         if (tun.position.z > 15) {
           scene.remove(tun);
           tunnels.splice(i, 1);
 
           const rand = Math.random();
-          if (rand < 0.60) spawnTrain(-220);
-          else if (rand < 0.80) spawnRamp(-220);
-          else spawnTunnel(-220);
+          if (rand < 0.55) spawnTrain(-220);
+          else if (rand < 0.75) spawnRamp(-220);
+          else if (rand < 0.90) spawnTunnel(-220);
+          else spawnPowerUp(-220);
         }
       }
 
       for (let i = powerups.length - 1; i >= 0; i--) {
-        const mag = powerups[i];
-        mag.position.z += speed * delta;
-        mag.rotation.y += 4 * delta;
+        const pUp = powerups[i];
+        pUp.position.z += currentSpeed * delta;
+        pUp.rotation.y += 4 * delta;
 
-        const magBox = new THREE.Box3().setFromObject(mag);
-        if (playerBox.intersectsBox(magBox)) {
-          scene.remove(mag);
+        const pUpBox = new THREE.Box3().setFromObject(pUp);
+        if (playerBox.intersectsBox(pUpBox)) {
+          scene.remove(pUp);
           powerups.splice(i, 1);
-          activateMagnet();
-        } else if (mag.position.z > 15) {
-          scene.remove(mag);
+          if (pUp.userData.type === 'magnet') {
+            activateMagnet();
+          } else {
+            activateSlowMo();
+          }
+        } else if (pUp.position.z > 15) {
+          scene.remove(pUp);
           powerups.splice(i, 1);
         }
       }
 
       for (let i = coins.length - 1; i >= 0; i--) {
         const coin = coins[i];
-        coin.position.z += speed * delta;
+        coin.position.z += currentSpeed * delta;
         coin.rotation.z += 4 * delta;
 
         if (isMagnetActive && Math.abs(coin.position.z - player.position.z) < 25) {
@@ -576,6 +617,7 @@
       isGameOver = false;
       isInvulnerable = false;
       isMagnetActive = false;
+      isSlowMoActive = false;
 
       isShieldActive = false;
       shieldCooldown = false;
@@ -583,6 +625,7 @@
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: READY";
       document.getElementById('shield-status').style.color = "#0be881";
       document.getElementById('magnet-status').innerText = "Magnet: READY";
+      document.getElementById('slowmo-status').innerText = "Slow-Mo: READY";
 
       document.getElementById('score').innerText = '0';
       document.getElementById('coins').innerText = '0';
@@ -592,10 +635,10 @@
 
       for (let z = -20; z > -220; z -= 18) {
         const rand = Math.random();
-        if (rand < 0.60) spawnTrain(z);
-        else if (rand < 0.80) spawnRamp(z);
-        else if (rand < 0.95) spawnTunnel(z);
-        else spawnMagnetPowerUp(z);
+        if (rand < 0.55) spawnTrain(z);
+        else if (rand < 0.75) spawnRamp(z);
+        else if (rand < 0.90) spawnTunnel(z);
+        else spawnPowerUp(z);
 
         const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
         spawnCoin(z, coinLane);
