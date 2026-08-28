@@ -248,8 +248,8 @@
     let powerups = [];
     let nextSpawnZ = -20;
 
-    function spawnTrain(zPos) {
-      const lane = LANES[Math.floor(Math.random() * LANES.length)];
+    function spawnTrain(zPos, laneOverride = null) {
+      const lane = laneOverride !== null ? laneOverride : LANES[Math.floor(Math.random() * LANES.length)];
       const trainGeo = new THREE.BoxGeometry(2.0, 2.8, 12);
       const trainMat = new THREE.MeshStandardMaterial({ 
         color: 0x7b2cbf, 
@@ -264,8 +264,8 @@
       obstacles.push(train);
     }
 
-    function spawnRamp(zPos) {
-      const lane = LANES[Math.floor(Math.random() * LANES.length)];
+    function spawnRamp(zPos, laneOverride = null) {
+      const lane = laneOverride !== null ? laneOverride : LANES[Math.floor(Math.random() * LANES.length)];
       const shape = new THREE.Shape();
       shape.moveTo(0, 0);
       shape.lineTo(0, 1.5);
@@ -353,13 +353,27 @@
 
     function spawnChunk(zPos) {
       const rand = Math.random();
-      if (rand < 0.50) spawnTrain(zPos);
-      else if (rand < 0.70) spawnRamp(zPos);
-      else if (rand < 0.90) spawnTunnel(zPos);
-      else spawnPowerUp(zPos);
+      if (rand < 0.40) {
+        // Single train
+        spawnTrain(zPos);
+      } else if (rand < 0.65) {
+        // Double obstacle wall (leave one lane open!)
+        const blockedLanes = [...LANES].sort(() => 0.5 - Math.random()).slice(0, 2);
+        blockedLanes.forEach(lane => spawnTrain(zPos, lane));
+      } else if (rand < 0.80) {
+        spawnRamp(zPos);
+      } else if (rand < 0.92) {
+        spawnTunnel(zPos);
+      } else {
+        spawnPowerUp(zPos);
+      }
       
       const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
       spawnCoin(zPos - 2, coinLane);
+      // Extra bonus coins packed tightly
+      if (Math.random() < 0.5) {
+        spawnCoin(zPos - 4, coinLane);
+      }
     }
 
     function createExplosion(position) {
@@ -385,9 +399,9 @@
       }
     }
 
-    for (let z = -20; z > -300; z -= 18) {
+    for (let z = -20; z > -300; z -= 12) {
       spawnChunk(z);
-      nextSpawnZ = z - 18;
+      nextSpawnZ = z - 12;
     }
 
     document.addEventListener('keydown', (e) => {
@@ -466,10 +480,9 @@
       score += Math.floor(currentSpeed * delta * 15);
       document.getElementById('score').innerText = score;
 
-      // Continuously generate new obstacles ahead infinitely
       if (nextSpawnZ > -player.position.z - 300) {
         spawnChunk(nextSpawnZ);
-        nextSpawnZ -= 18;
+        nextSpawnZ -= 12;
       }
 
       if (isMagnetActive) {
@@ -669,9 +682,9 @@
       nextSpawnZ = -20;
       clock.start();
 
-      for (let z = -20; z > -300; z -= 18) {
+      for (let z = -20; z > -300; z -= 12) {
         spawnChunk(z);
-        nextSpawnZ = z - 18;
+        nextSpawnZ = z - 12;
       }
 
       animate();
