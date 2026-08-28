@@ -139,8 +139,8 @@
     let score = 0;
     let coinsCollected = 0;
     
-    // NIGHTMARE DIFFICULTY SETTINGS
-    const INITIAL_SPEED = 55;
+    const INITIAL_SPEED = 45;
+    const MAX_SPEED = 90;
     let speed = INITIAL_SPEED;
     let isGameOver = false;
 
@@ -154,7 +154,6 @@
     let magnetTimer = 0;
     let particles = [];
 
-    // BRUTAL JUMP PHYSICS
     const BASE_Y = 0.9;
     let velocityY = 0;
     const gravity = -68;
@@ -163,7 +162,7 @@
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0f0f11);
-    scene.fog = new THREE.Fog(0x0f0f11, 10, 130);
+    scene.fog = new THREE.Fog(0x0f0f11, 20, 220); // Expanded fog range
 
     const clock = new THREE.Clock();
 
@@ -292,7 +291,6 @@
       }
     }
 
-    // DENSER INITIAL SPAWN MATRIX (Shorter spacing: 18 units apart)
     for (let z = -20; z > -220; z -= 18) {
       const rand = Math.random();
       if (rand < 0.75) spawnTrain(z);
@@ -341,7 +339,6 @@
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: RECHARGING...";
       document.getElementById('shield-status').style.color = "#ff4757";
 
-      // BRUTAL COOLDOWN (11 seconds)
       setTimeout(() => {
         shieldCooldown = false;
         document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: READY";
@@ -351,7 +348,7 @@
 
     function activateMagnet() {
       isMagnetActive = true;
-      magnetTimer = 2.5; // Very short magnet duration
+      magnetTimer = 2.5;
       playSound('shield');
       document.getElementById('magnet-status').innerText = "Magnet: ACTIVE!";
     }
@@ -362,8 +359,9 @@
 
       const delta = clock.getDelta();
 
-      // RAPID ACCELERATION
-      speed += 2.2 * delta;
+      if (speed < MAX_SPEED) {
+        speed += 1.5 * delta;
+      }
       score += Math.floor(speed * delta * 15);
       document.getElementById('score').innerText = score;
 
@@ -376,7 +374,6 @@
         }
       }
 
-      // SNAPPY LATERAL RESPONSE
       player.position.x += (LANES[currentLane] - player.position.x) * (25 * delta);
 
       player.position.y += velocityY * delta;
@@ -437,14 +434,14 @@
           }
         }
 
-        if (obs.position.z > 10) {
+        if (obs.position.z > 15) {
           scene.remove(obs);
           obstacles.splice(i, 1);
           
           const rand = Math.random();
-          if (rand < 0.75) spawnTrain(-210);
-          else if (rand < 0.90) spawnRamp(-210);
-          else spawnMagnetPowerUp(-210);
+          if (rand < 0.75) spawnTrain(-220);
+          else if (rand < 0.90) spawnRamp(-220);
+          else spawnMagnetPowerUp(-220);
         }
       }
 
@@ -458,7 +455,7 @@
           scene.remove(mag);
           powerups.splice(i, 1);
           activateMagnet();
-        } else if (mag.position.z > 10) {
+        } else if (mag.position.z > 15) {
           scene.remove(mag);
           powerups.splice(i, 1);
         }
@@ -482,13 +479,13 @@
           coinsCollected++;
           playSound('coin');
           document.getElementById('coins').innerText = coinsCollected;
-        } else if (coin.position.z > 10) {
+        } else if (coin.position.z > 15) {
           scene.remove(coin);
           coins.splice(i, 1);
           
           if (Math.random() < 0.3) {
             const lane = LANES[Math.floor(Math.random() * LANES.length)];
-            spawnCoin(-210, lane);
+            spawnCoin(-220, lane);
           }
         }
       }
