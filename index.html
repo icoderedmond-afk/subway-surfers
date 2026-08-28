@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Endless Runner - Hardcore Mode</title>
+  <title>3D Endless Runner - Nightmare Mode</title>
   <style>
     body {
       margin: 0;
@@ -139,12 +139,12 @@
     let score = 0;
     let coinsCollected = 0;
     
-    // INCREASED DIFFICULTY SETTINGS
-    const INITIAL_SPEED = 42;
+    // NIGHTMARE DIFFICULTY SETTINGS
+    const INITIAL_SPEED = 55;
     let speed = INITIAL_SPEED;
     let isGameOver = false;
 
-    let highScore = localStorage.getItem('runner_hardcore_high_score') || 0;
+    let highScore = localStorage.getItem('runner_nightmare_high_score') || 0;
     document.getElementById('high-score').innerText = highScore;
 
     let isShieldActive = false;
@@ -154,16 +154,16 @@
     let magnetTimer = 0;
     let particles = [];
 
-    // HARDER JUMP PHYSICS (Heavier gravity, shorter window)
+    // BRUTAL JUMP PHYSICS
     const BASE_Y = 0.9;
     let velocityY = 0;
-    const gravity = -52;
-    const jumpPower = 14.5;
+    const gravity = -68;
+    const jumpPower = 15.0;
     let isGrounded = true;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1e272e);
-    scene.fog = new THREE.Fog(0x1e272e, 10, 150);
+    scene.background = new THREE.Color(0x0f0f11);
+    scene.fog = new THREE.Fog(0x0f0f11, 10, 130);
 
     const clock = new THREE.Clock();
 
@@ -173,7 +173,7 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -181,7 +181,7 @@
     scene.add(dirLight);
 
     const trackGeometry = new THREE.PlaneGeometry(12, 500);
-    const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x3d3d3d });
+    const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const track = new THREE.Mesh(trackGeometry, trackMaterial);
     track.rotation.x = -Math.PI / 2;
     track.position.set(0, -0.05, -200);
@@ -189,7 +189,7 @@
 
     LANES.forEach(x => {
       const railGeo = new THREE.BoxGeometry(0.2, 0.1, 500);
-      const railMat = new THREE.MeshLambertMaterial({ color: 0x718093 });
+      const railMat = new THREE.MeshLambertMaterial({ color: 0x485460 });
       const rail1 = new THREE.Mesh(railGeo, railMat);
       const rail2 = new THREE.Mesh(railGeo, railMat);
       rail1.position.set(x - 0.8, 0.05, -200);
@@ -199,13 +199,13 @@
     });
 
     const playerGeo = new THREE.BoxGeometry(0.8, 1.6, 0.8);
-    const playerMat = new THREE.MeshLambertMaterial({ color: 0xff4757 });
+    const playerMat = new THREE.MeshLambertMaterial({ color: 0xeb2f06 });
     const player = new THREE.Mesh(playerGeo, playerMat);
     player.position.set(LANES[currentLane], BASE_Y, 0);
     scene.add(player);
 
     const shieldGeo = new THREE.SphereGeometry(1.2, 16, 16);
-    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00d2d3, wireframe: true, transparent: true, opacity: 0.8 });
+    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x0be881, wireframe: true, transparent: true, opacity: 0.8 });
     const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
     shieldMesh.visible = false;
     player.add(shieldMesh);
@@ -220,7 +220,7 @@
     function spawnTrain(zPos) {
       const lane = LANES[Math.floor(Math.random() * LANES.length)];
       const trainGeo = new THREE.BoxGeometry(2.0, 2.8, 12);
-      const trainMat = new THREE.MeshLambertMaterial({ color: 0x2f3640 });
+      const trainMat = new THREE.MeshLambertMaterial({ color: 0x1e272e });
       const train = new THREE.Mesh(trainGeo, trainMat);
       train.position.set(lane, 1.4, zPos);
       train.userData = { type: 'train' };
@@ -238,7 +238,7 @@
 
       const extrudeSettings = { depth: 2.0, bevelEnabled: false };
       const rampGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-      const rampMat = new THREE.MeshLambertMaterial({ color: 0xffa502 });
+      const rampMat = new THREE.MeshLambertMaterial({ color: 0xf53b57 });
       const ramp = new THREE.Mesh(rampGeo, rampMat);
       
       ramp.rotation.y = Math.PI / 2;
@@ -250,7 +250,7 @@
 
     function spawnCoin(zPos, lane, height = 0.8) {
       const coinGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.1, 16);
-      const coinMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
+      const coinMat = new THREE.MeshLambertMaterial({ color: 0xfffa65 });
       const coin = new THREE.Mesh(coinGeo, coinMat);
       coin.rotation.x = Math.PI / 2;
       coin.position.set(lane, height, zPos);
@@ -261,7 +261,7 @@
     function spawnMagnetPowerUp(zPos) {
       const lane = LANES[Math.floor(Math.random() * LANES.length)];
       const magGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-      const magMat = new THREE.MeshLambertMaterial({ color: 0xff9f43 });
+      const magMat = new THREE.MeshLambertMaterial({ color: 0xefa8e4 });
       const mag = new THREE.Mesh(magGeo, magMat);
       mag.position.set(lane, 1.0, zPos);
       mag.userData = { type: 'magnet' };
@@ -270,20 +270,20 @@
     }
 
     function createExplosion(position) {
-      const particleCount = 20;
+      const particleCount = 25;
       const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
       
       for (let i = 0; i < particleCount; i++) {
         const material = new THREE.MeshBasicMaterial({
-          color: Math.random() > 0.5 ? 0xff4757 : 0xffa502
+          color: Math.random() > 0.5 ? 0xeb2f06 : 0xf53b57
         });
         const particle = new THREE.Mesh(geometry, material);
         particle.position.copy(position);
 
         particle.userData = {
-          vx: (Math.random() - 0.5) * 12,
-          vy: Math.random() * 10 + 2,
-          vz: (Math.random() - 0.5) * 12,
+          vx: (Math.random() - 0.5) * 15,
+          vy: Math.random() * 12 + 2,
+          vz: (Math.random() - 0.5) * 15,
           life: 1.0
         };
 
@@ -292,10 +292,11 @@
       }
     }
 
-    // TIGHTER INITIAL SPAWNING DISTANCES
-    for (let z = -25; z > -220; z -= 25) {
-      if (Math.random() < 0.65) spawnTrain(z);
-      else if (Math.random() < 0.85) spawnRamp(z);
+    // DENSER INITIAL SPAWN MATRIX (Shorter spacing: 18 units apart)
+    for (let z = -20; z > -220; z -= 18) {
+      const rand = Math.random();
+      if (rand < 0.75) spawnTrain(z);
+      else if (rand < 0.90) spawnRamp(z);
       else spawnMagnetPowerUp(z);
       
       const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
@@ -326,7 +327,7 @@
       shieldMesh.visible = true;
       playSound('shield');
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: ACTIVE!";
-      document.getElementById('shield-status').style.color = "#ffdd59";
+      document.getElementById('shield-status').style.color = "#0be881";
     }
 
     function deactivateShield() {
@@ -335,22 +336,22 @@
       shieldCooldown = true;
       isInvulnerable = true;
 
-      setTimeout(() => { isInvulnerable = false; }, 300);
+      setTimeout(() => { isInvulnerable = false; }, 200);
 
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: RECHARGING...";
       document.getElementById('shield-status').style.color = "#ff4757";
 
-      // LONGER COOLDOWN (7 seconds instead of 5)
+      // BRUTAL COOLDOWN (11 seconds)
       setTimeout(() => {
         shieldCooldown = false;
         document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: READY";
-        document.getElementById('shield-status').style.color = "#00d2d3";
-      }, 7000);
+        document.getElementById('shield-status').style.color = "#0be881";
+      }, 11000);
     }
 
     function activateMagnet() {
       isMagnetActive = true;
-      magnetTimer = 4.0; // Shorter magnet duration
+      magnetTimer = 2.5; // Very short magnet duration
       playSound('shield');
       document.getElementById('magnet-status').innerText = "Magnet: ACTIVE!";
     }
@@ -361,9 +362,9 @@
 
       const delta = clock.getDelta();
 
-      // FASTER ACCELERATION CURVE
-      speed += 1.4 * delta;
-      score += Math.floor(speed * delta * 10);
+      // RAPID ACCELERATION
+      speed += 2.2 * delta;
+      score += Math.floor(speed * delta * 15);
       document.getElementById('score').innerText = score;
 
       if (isMagnetActive) {
@@ -375,8 +376,8 @@
         }
       }
 
-      // FASTER LATERAL MOVEMENT RESPONSE
-      player.position.x += (LANES[currentLane] - player.position.x) * (20 * delta);
+      // SNAPPY LATERAL RESPONSE
+      player.position.x += (LANES[currentLane] - player.position.x) * (25 * delta);
 
       player.position.y += velocityY * delta;
       velocityY += gravity * delta;
@@ -388,7 +389,7 @@
       }
 
       if (isShieldActive) {
-        shieldMesh.rotation.y += 2 * delta;
+        shieldMesh.rotation.y += 3 * delta;
       }
 
       for (let i = particles.length - 1; i >= 0; i--) {
@@ -396,7 +397,7 @@
         p.position.x += p.userData.vx * delta;
         p.position.y += p.userData.vy * delta;
         p.position.z += p.userData.vz * delta;
-        p.userData.life -= 1.5 * delta;
+        p.userData.life -= 2.0 * delta;
 
         p.scale.setScalar(Math.max(0, p.userData.life));
 
@@ -407,7 +408,7 @@
       }
 
       const playerBox = new THREE.Box3().setFromObject(player);
-      playerBox.expandByScalar(-0.05);
+      playerBox.expandByScalar(-0.02);
 
       for (let i = obstacles.length - 1; i >= 0; i--) {
         const obs = obstacles[i];
@@ -417,7 +418,7 @@
 
         if (playerBox.intersectsBox(obsBox)) {
           if (obs.userData.type === 'ramp') {
-            velocityY = jumpPower * 1.05;
+            velocityY = jumpPower * 1.02;
             isGrounded = false;
             playSound('jump');
           } else if (obs.userData.type === 'train') {
@@ -441,8 +442,8 @@
           obstacles.splice(i, 1);
           
           const rand = Math.random();
-          if (rand < 0.6) spawnTrain(-210);
-          else if (rand < 0.85) spawnRamp(-210);
+          if (rand < 0.75) spawnTrain(-210);
+          else if (rand < 0.90) spawnRamp(-210);
           else spawnMagnetPowerUp(-210);
         }
       }
@@ -450,7 +451,7 @@
       for (let i = powerups.length - 1; i >= 0; i--) {
         const mag = powerups[i];
         mag.position.z += speed * delta;
-        mag.rotation.y += 3 * delta;
+        mag.rotation.y += 4 * delta;
 
         const magBox = new THREE.Box3().setFromObject(mag);
         if (playerBox.intersectsBox(magBox)) {
@@ -466,11 +467,11 @@
       for (let i = coins.length - 1; i >= 0; i--) {
         const coin = coins[i];
         coin.position.z += speed * delta;
-        coin.rotation.z += 3 * delta;
+        coin.rotation.z += 4 * delta;
 
         if (isMagnetActive && Math.abs(coin.position.z - player.position.z) < 25) {
-          coin.position.x += (player.position.x - coin.position.x) * 10 * delta;
-          coin.position.y += (player.position.y - coin.position.y) * 10 * delta;
+          coin.position.x += (player.position.x - coin.position.x) * 12 * delta;
+          coin.position.y += (player.position.y - coin.position.y) * 12 * delta;
         }
 
         const coinBox = new THREE.Box3().setFromObject(coin);
@@ -485,7 +486,7 @@
           scene.remove(coin);
           coins.splice(i, 1);
           
-          if (Math.random() < 0.4) {
+          if (Math.random() < 0.3) {
             const lane = LANES[Math.floor(Math.random() * LANES.length)];
             spawnCoin(-210, lane);
           }
@@ -503,7 +504,7 @@
       let isNewHigh = false;
       if (score > highScore) {
         highScore = score;
-        localStorage.setItem('runner_hardcore_high_score', highScore);
+        localStorage.setItem('runner_nightmare_high_score', highScore);
         document.getElementById('high-score').innerText = highScore;
         isNewHigh = true;
       }
@@ -537,7 +538,7 @@
       shieldCooldown = false;
       shieldMesh.visible = false;
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: READY";
-      document.getElementById('shield-status').style.color = "#00d2d3";
+      document.getElementById('shield-status').style.color = "#0be881";
       document.getElementById('magnet-status').innerText = "Magnet: READY";
 
       document.getElementById('score').innerText = '0';
@@ -546,8 +547,8 @@
 
       clock.start();
 
-      for (let z = -25; z > -220; z -= 25) {
-        if (Math.random() < 0.65) spawnTrain(z);
+      for (let z = -20; z > -220; z -= 18) {
+        if (Math.random() < 0.75) spawnTrain(z);
         else spawnRamp(z);
 
         const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
