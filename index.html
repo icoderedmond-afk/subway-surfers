@@ -162,7 +162,7 @@
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0f0f11);
-    scene.fog = new THREE.Fog(0x0f0f11, 20, 220); // Expanded fog range
+    scene.fog = new THREE.Fog(0x0f0f11, 20, 220);
 
     const clock = new THREE.Clock();
 
@@ -213,6 +213,7 @@
     camera.lookAt(0, 1.5, -5);
 
     let obstacles = [];
+    let tunnels = [];
     let coins = [];
     let powerups = [];
 
@@ -245,6 +246,33 @@
       ramp.userData = { type: 'ramp' };
       scene.add(ramp);
       obstacles.push(ramp);
+    }
+
+    function spawnTunnel(zPos) {
+      const tunnelGroup = new THREE.Group();
+      
+      // Left wall
+      const wallGeo = new THREE.BoxGeometry(0.5, 4, 15);
+      const wallMat = new THREE.MeshLambertMaterial({ color: 0x353b48 });
+      const leftWall = new THREE.Mesh(wallGeo, wallMat);
+      leftWall.position.set(-5.5, 2, 0);
+      tunnelGroup.add(leftWall);
+
+      // Right wall
+      const rightWall = new THREE.Mesh(wallGeo, wallMat);
+      rightWall.position.set(5.5, 2, 0);
+      tunnelGroup.add(rightWall);
+
+      // Ceiling roof
+      const roofGeo = new THREE.BoxGeometry(12, 0.5, 15);
+      const roofMat = new THREE.MeshLambertMaterial({ color: 0x2f3640 });
+      const roof = new THREE.Mesh(roofGeo, roofMat);
+      roof.position.set(0, 4.25, 0);
+      tunnelGroup.add(roof);
+
+      tunnelGroup.position.set(0, 0, zPos);
+      scene.add(tunnelGroup);
+      tunnels.push(tunnelGroup);
     }
 
     function spawnCoin(zPos, lane, height = 0.8) {
@@ -293,8 +321,9 @@
 
     for (let z = -20; z > -220; z -= 18) {
       const rand = Math.random();
-      if (rand < 0.75) spawnTrain(z);
-      else if (rand < 0.90) spawnRamp(z);
+      if (rand < 0.60) spawnTrain(z);
+      else if (rand < 0.80) spawnRamp(z);
+      else if (rand < 0.95) spawnTunnel(z);
       else spawnMagnetPowerUp(z);
       
       const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
@@ -439,9 +468,24 @@
           obstacles.splice(i, 1);
           
           const rand = Math.random();
-          if (rand < 0.75) spawnTrain(-220);
-          else if (rand < 0.90) spawnRamp(-220);
-          else spawnMagnetPowerUp(-220);
+          if (rand < 0.60) spawnTrain(-220);
+          else if (rand < 0.80) spawnRamp(-220);
+          else spawnTunnel(-220);
+        }
+      }
+
+      for (let i = tunnels.length - 1; i >= 0; i--) {
+        const tun = tunnels[i];
+        tun.position.z += speed * delta;
+
+        if (tun.position.z > 15) {
+          scene.remove(tun);
+          tunnels.splice(i, 1);
+
+          const rand = Math.random();
+          if (rand < 0.60) spawnTrain(-220);
+          else if (rand < 0.80) spawnRamp(-220);
+          else spawnTunnel(-220);
         }
       }
 
@@ -512,10 +556,12 @@
 
     function resetGame() {
       obstacles.forEach(obs => scene.remove(obs));
+      tunnels.forEach(tun => scene.remove(tun));
       coins.forEach(coin => scene.remove(coin));
       powerups.forEach(m => scene.remove(m));
       particles.forEach(p => scene.remove(p));
       obstacles = [];
+      tunnels = [];
       coins = [];
       powerups = [];
       particles = [];
@@ -545,8 +591,11 @@
       clock.start();
 
       for (let z = -20; z > -220; z -= 18) {
-        if (Math.random() < 0.75) spawnTrain(z);
-        else spawnRamp(z);
+        const rand = Math.random();
+        if (rand < 0.60) spawnTrain(z);
+        else if (rand < 0.80) spawnRamp(z);
+        else if (rand < 0.95) spawnTunnel(z);
+        else spawnMagnetPowerUp(z);
 
         const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
         spawnCoin(z, coinLane);
