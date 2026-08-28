@@ -3,38 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Endless Runner - Nightmare Mode</title>
+  <title>3D Endless Runner - Neon Nightmare</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
-      font-family: Arial, sans-serif;
-      background-color: #000;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #05050a;
     }
     #ui {
       position: absolute;
       top: 20px;
       left: 20px;
-      color: #fff;
+      color: #00ffff;
       font-size: 22px;
       font-weight: bold;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
       z-index: 10;
     }
     #stats-panel {
       position: absolute;
       top: 20px;
       right: 20px;
-      color: #fff;
+      color: #ff00ff;
       font-size: 18px;
       text-align: right;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      text-shadow: 0 0 10px rgba(255, 0, 255, 0.7);
       z-index: 10;
     }
     #shield-status, #magnet-status, #slowmo-status {
       margin-top: 5px;
       font-size: 16px;
-      color: #00d2d3;
     }
     #game-over {
       display: none;
@@ -44,24 +43,27 @@
       transform: translate(-50%, -50%);
       color: #fff;
       text-align: center;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(10, 10, 20, 0.9);
+      border: 2px solid #ff00ff;
+      box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
       padding: 30px;
       border-radius: 10px;
       z-index: 20;
     }
     #game-over button {
-      padding: 10px 20px;
+      padding: 12px 25px;
       font-size: 18px;
       font-weight: bold;
-      background-color: #ff4757;
+      background: linear-gradient(45deg, #ff007f, #7f00ff);
       color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
       margin-top: 15px;
+      box-shadow: 0 0 10px rgba(255, 0, 127, 0.7);
     }
     #game-over button:hover {
-      background-color: #ff6b81;
+      background: linear-gradient(45deg, #ff3399, #9933ff);
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -70,9 +72,9 @@
 
   <div id="ui">
     Score: <span id="score">0</span> | Coins: <span id="coins">0</span>
-    <div id="shield-status">Shield [SPACEBAR]: READY</div>
+    <div id="shield-status" style="color: #00ff66;">Shield [SPACEBAR]: READY</div>
     <div id="magnet-status" style="color: #ff9f43;">Magnet: READY</div>
-    <div id="slowmo-status" style="color: #00cec9;">Slow-Mo: READY</div>
+    <div id="slowmo-status" style="color: #00d2d3;">Slow-Mo: READY</div>
   </div>
 
   <div id="stats-panel">
@@ -80,10 +82,10 @@
   </div>
 
   <div id="game-over">
-    <h1>GAME OVER</h1>
+    <h1 style="color: #00ffff; text-shadow: 0 0 10px rgba(0,255,255,0.8);">GAME OVER</h1>
     <p>Final Score: <span id="final-score">0</span></p>
     <p>Coins Collected: <span id="final-coins">0</span></p>
-    <p id="new-high-score" style="color: #ffdd59; font-weight: bold; display: none;">New High Score!</p>
+    <p id="new-high-score" style="color: #ffff00; font-weight: bold; display: none; text-shadow: 0 0 8px rgba(255,255,0,0.8);">New High Score!</p>
     <button onclick="resetGame()">Try Again</button>
   </div>
 
@@ -175,8 +177,8 @@
     let isGrounded = true;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0f0f11);
-    scene.fog = new THREE.Fog(0x0f0f11, 20, 220);
+    scene.background = new THREE.Color(0x0a0518);
+    scene.fog = new THREE.FogExp2(0x0a0518, 0.015);
 
     const clock = new THREE.Clock();
 
@@ -186,23 +188,33 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 20, 10);
+    const dirLight = new THREE.DirectionalLight(0xff00ff, 1.2);
+    dirLight.position.set(10, 25, 10);
     scene.add(dirLight);
 
+    const pointLight = new THREE.PointLight(0x00ffff, 2, 50);
+    pointLight.position.set(0, 5, 0);
+    scene.add(pointLight);
+
+    // Colorful track with neon grid pattern look
     const trackGeometry = new THREE.PlaneGeometry(12, 500);
-    const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
+    const trackMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x141125, 
+      roughness: 0.4,
+      metalness: 0.2
+    });
     const track = new THREE.Mesh(trackGeometry, trackMaterial);
     track.rotation.x = -Math.PI / 2;
     track.position.set(0, -0.05, -200);
     scene.add(track);
 
+    // Glowing Neon Rails
     LANES.forEach(x => {
-      const railGeo = new THREE.BoxGeometry(0.2, 0.1, 500);
-      const railMat = new THREE.MeshLambertMaterial({ color: 0x485460 });
+      const railGeo = new THREE.BoxGeometry(0.2, 0.15, 500);
+      const railMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
       const rail1 = new THREE.Mesh(railGeo, railMat);
       const rail2 = new THREE.Mesh(railGeo, railMat);
       rail1.position.set(x - 0.8, 0.05, -200);
@@ -211,14 +223,21 @@
       scene.add(rail2);
     });
 
+    // Vibrant Player Mesh
     const playerGeo = new THREE.BoxGeometry(0.8, 1.6, 0.8);
-    const playerMat = new THREE.MeshLambertMaterial({ color: 0xeb2f06 });
+    const playerMat = new THREE.MeshStandardMaterial({ 
+      color: 0xff0055, 
+      emissive: 0xff0055, 
+      emissiveIntensity: 0.5,
+      roughness: 0.2
+    });
     const player = new THREE.Mesh(playerGeo, playerMat);
     player.position.set(LANES[currentLane], BASE_Y, 0);
     scene.add(player);
+    player.add(pointLight); // Follow player with point light
 
     const shieldGeo = new THREE.SphereGeometry(1.2, 16, 16);
-    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x0be881, wireframe: true, transparent: true, opacity: 0.8 });
+    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00ff66, wireframe: true, transparent: true, opacity: 0.8 });
     const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
     shieldMesh.visible = false;
     player.add(shieldMesh);
@@ -234,7 +253,12 @@
     function spawnTrain(zPos) {
       const lane = LANES[Math.floor(Math.random() * LANES.length)];
       const trainGeo = new THREE.BoxGeometry(2.0, 2.8, 12);
-      const trainMat = new THREE.MeshLambertMaterial({ color: 0x1e272e });
+      const trainMat = new THREE.MeshStandardMaterial({ 
+        color: 0x7b2cbf, 
+        emissive: 0x3c096c, 
+        emissiveIntensity: 0.6,
+        roughness: 0.3 
+      });
       const train = new THREE.Mesh(trainGeo, trainMat);
       train.position.set(lane, 1.4, zPos);
       train.userData = { type: 'train' };
@@ -252,7 +276,11 @@
 
       const extrudeSettings = { depth: 2.0, bevelEnabled: false };
       const rampGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-      const rampMat = new THREE.MeshLambertMaterial({ color: 0xf53b57 });
+      const rampMat = new THREE.MeshStandardMaterial({ 
+        color: 0xff9f43, 
+        emissive: 0xff6b00, 
+        emissiveIntensity: 0.7 
+      });
       const ramp = new THREE.Mesh(rampGeo, rampMat);
       
       ramp.rotation.y = Math.PI / 2;
@@ -266,7 +294,11 @@
       const tunnelGroup = new THREE.Group();
       
       const wallGeo = new THREE.BoxGeometry(0.5, 4, 15);
-      const wallMat = new THREE.MeshLambertMaterial({ color: 0x353b48 });
+      const wallMat = new THREE.MeshStandardMaterial({ 
+        color: 0x00b4d8, 
+        emissive: 0x0077b6, 
+        emissiveIntensity: 0.4 
+      });
       const leftWall = new THREE.Mesh(wallGeo, wallMat);
       leftWall.position.set(-5.5, 2, 0);
       tunnelGroup.add(leftWall);
@@ -276,7 +308,11 @@
       tunnelGroup.add(rightWall);
 
       const roofGeo = new THREE.BoxGeometry(12, 0.5, 15);
-      const roofMat = new THREE.MeshLambertMaterial({ color: 0x2f3640 });
+      const roofMat = new THREE.MeshStandardMaterial({ 
+        color: 0x7209b7, 
+        emissive: 0x560bad, 
+        emissiveIntensity: 0.5 
+      });
       const roof = new THREE.Mesh(roofGeo, roofMat);
       roof.position.set(0, 4.25, 0);
       tunnelGroup.add(roof);
@@ -288,7 +324,11 @@
 
     function spawnCoin(zPos, lane, height = 0.8) {
       const coinGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.1, 16);
-      const coinMat = new THREE.MeshLambertMaterial({ color: 0xfffa65 });
+      const coinMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffea00, 
+        emissive: 0xffbb00, 
+        emissiveIntensity: 0.9 
+      });
       const coin = new THREE.Mesh(coinGeo, coinMat);
       coin.rotation.x = Math.PI / 2;
       coin.position.set(lane, height, zPos);
@@ -301,7 +341,11 @@
       const type = Math.random() < 0.5 ? 'magnet' : 'slowmo';
       
       const geo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-      const mat = new THREE.MeshLambertMaterial({ color: type === 'magnet' ? 0xefa8e4 : 0x00cec9 });
+      const mat = new THREE.MeshStandardMaterial({ 
+        color: type === 'magnet' ? 0xff00ff : 0x00ffcc,
+        emissive: type === 'magnet' ? 0xff00ff : 0x00ffcc,
+        emissiveIntensity: 0.8
+      });
       const powerup = new THREE.Mesh(geo, mat);
       powerup.position.set(lane, 1.0, zPos);
       powerup.userData = { type: type };
@@ -310,20 +354,20 @@
     }
 
     function createExplosion(position) {
-      const particleCount = 25;
+      const particleCount = 30;
       const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
       
       for (let i = 0; i < particleCount; i++) {
         const material = new THREE.MeshBasicMaterial({
-          color: Math.random() > 0.5 ? 0xeb2f06 : 0xf53b57
+          color: Math.random() > 0.5 ? 0xff0055 : 0x00ffff
         });
         const particle = new THREE.Mesh(geometry, material);
         particle.position.copy(position);
 
         particle.userData = {
-          vx: (Math.random() - 0.5) * 15,
-          vy: Math.random() * 12 + 2,
-          vz: (Math.random() - 0.5) * 15,
+          vx: (Math.random() - 0.5) * 18,
+          vy: Math.random() * 14 + 2,
+          vz: (Math.random() - 0.5) * 18,
           life: 1.0
         };
 
@@ -367,7 +411,7 @@
       shieldMesh.visible = true;
       playSound('shield');
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: ACTIVE!";
-      document.getElementById('shield-status').style.color = "#0be881";
+      document.getElementById('shield-status').style.color = "#00ff66";
     }
 
     function deactivateShield() {
@@ -384,7 +428,7 @@
       setTimeout(() => {
         shieldCooldown = false;
         document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: READY";
-        document.getElementById('shield-status').style.color = "#0be881";
+        document.getElementById('shield-status').style.color = "#00ff66";
       }, 11000);
     }
 
@@ -408,7 +452,6 @@
 
       const delta = clock.getDelta();
 
-      // Effective speed is reduced during Slow-Mo
       let currentSpeed = speed;
       if (isSlowMoActive) {
         currentSpeed *= 0.5;
@@ -623,7 +666,7 @@
       shieldCooldown = false;
       shieldMesh.visible = false;
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: READY";
-      document.getElementById('shield-status').style.color = "#0be881";
+      document.getElementById('shield-status').style.color = "#00ff66";
       document.getElementById('magnet-status').innerText = "Magnet: READY";
       document.getElementById('slowmo-status').innerText = "Slow-Mo: READY";
 
