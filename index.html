@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Endless Runner - Enhanced</title>
+  <title>3D Endless Runner - Hardcore Mode</title>
   <style>
     body {
       margin: 0;
@@ -87,7 +87,6 @@
   </div>
 
   <script>
-    // AUDIO SYNTHESIZER (No external asset dependency)
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playSound(type) {
       if (!audioCtx) return;
@@ -140,15 +139,14 @@
     let score = 0;
     let coinsCollected = 0;
     
-    const INITIAL_SPEED = 30;
+    // INCREASED DIFFICULTY SETTINGS
+    const INITIAL_SPEED = 42;
     let speed = INITIAL_SPEED;
     let isGameOver = false;
 
-    // LOCAL STORAGE HIGH SCORE
-    let highScore = localStorage.getItem('runner_high_score') || 0;
+    let highScore = localStorage.getItem('runner_hardcore_high_score') || 0;
     document.getElementById('high-score').innerText = highScore;
 
-    // SHIELD & MAGNET POWER-UPS
     let isShieldActive = false;
     let shieldCooldown = false;
     let isInvulnerable = false;
@@ -156,14 +154,13 @@
     let magnetTimer = 0;
     let particles = [];
 
-    // JUMP PHYSICS
+    // HARDER JUMP PHYSICS (Heavier gravity, shorter window)
     const BASE_Y = 0.9;
     let velocityY = 0;
-    const gravity = -38;
-    const jumpPower = 15;
+    const gravity = -52;
+    const jumpPower = 14.5;
     let isGrounded = true;
 
-    // SCENE SETUP
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1e272e);
     scene.fog = new THREE.Fog(0x1e272e, 10, 150);
@@ -176,7 +173,6 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
 
-    // LIGHTS
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
@@ -184,7 +180,6 @@
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    // TRACK
     const trackGeometry = new THREE.PlaneGeometry(12, 500);
     const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x3d3d3d });
     const track = new THREE.Mesh(trackGeometry, trackMaterial);
@@ -192,7 +187,6 @@
     track.position.set(0, -0.05, -200);
     scene.add(track);
 
-    // RAILS
     LANES.forEach(x => {
       const railGeo = new THREE.BoxGeometry(0.2, 0.1, 500);
       const railMat = new THREE.MeshLambertMaterial({ color: 0x718093 });
@@ -204,14 +198,12 @@
       scene.add(rail2);
     });
 
-    // PLAYER
     const playerGeo = new THREE.BoxGeometry(0.8, 1.6, 0.8);
-    const playerMat = new THREE.MeshLambertMaterial({ color: 0x00d2d3 });
+    const playerMat = new THREE.MeshLambertMaterial({ color: 0xff4757 });
     const player = new THREE.Mesh(playerGeo, playerMat);
     player.position.set(LANES[currentLane], BASE_Y, 0);
     scene.add(player);
 
-    // SHIELD MESH
     const shieldGeo = new THREE.SphereGeometry(1.2, 16, 16);
     const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00d2d3, wireframe: true, transparent: true, opacity: 0.8 });
     const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
@@ -228,7 +220,7 @@
     function spawnTrain(zPos) {
       const lane = LANES[Math.floor(Math.random() * LANES.length)];
       const trainGeo = new THREE.BoxGeometry(2.0, 2.8, 12);
-      const trainMat = new THREE.MeshLambertMaterial({ color: 0xff4757 });
+      const trainMat = new THREE.MeshLambertMaterial({ color: 0x2f3640 });
       const train = new THREE.Mesh(trainGeo, trainMat);
       train.position.set(lane, 1.4, zPos);
       train.userData = { type: 'train' };
@@ -300,19 +292,16 @@
       }
     }
 
-    // INITIAL SPAWNS
-    for (let z = -30; z > -250; z -= 35) {
-      if (Math.random() < 0.5) spawnTrain(z);
-      else if (Math.random() < 0.8) spawnRamp(z);
+    // TIGHTER INITIAL SPAWNING DISTANCES
+    for (let z = -25; z > -220; z -= 25) {
+      if (Math.random() < 0.65) spawnTrain(z);
+      else if (Math.random() < 0.85) spawnRamp(z);
       else spawnMagnetPowerUp(z);
       
       const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
-      for (let c = 0; c < 2; c++) {
-        spawnCoin(z - (c * 3), coinLane);
-      }
+      spawnCoin(z - 2, coinLane);
     }
 
-    // INPUT LOGIC
     document.addEventListener('keydown', (e) => {
       if (isGameOver) return;
 
@@ -351,30 +340,30 @@
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: RECHARGING...";
       document.getElementById('shield-status').style.color = "#ff4757";
 
+      // LONGER COOLDOWN (7 seconds instead of 5)
       setTimeout(() => {
         shieldCooldown = false;
         document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: READY";
         document.getElementById('shield-status').style.color = "#00d2d3";
-      }, 5000);
+      }, 7000);
     }
 
     function activateMagnet() {
       isMagnetActive = true;
-      magnetTimer = 6.0; // 6 seconds of coin magnet
+      magnetTimer = 4.0; // Shorter magnet duration
       playSound('shield');
       document.getElementById('magnet-status').innerText = "Magnet: ACTIVE!";
     }
 
-    // MAIN LOOP
     function animate() {
       if (isGameOver) return;
       requestAnimationFrame(animate);
 
       const delta = clock.getDelta();
 
-      // PROGRESSIVE DIFFICULTY (Speed scales faster over time)
-      speed += 0.8 * delta;
-      score += Math.floor(speed * delta * 6);
+      // FASTER ACCELERATION CURVE
+      speed += 1.4 * delta;
+      score += Math.floor(speed * delta * 10);
       document.getElementById('score').innerText = score;
 
       if (isMagnetActive) {
@@ -386,7 +375,8 @@
         }
       }
 
-      player.position.x += (LANES[currentLane] - player.position.x) * (15 * delta);
+      // FASTER LATERAL MOVEMENT RESPONSE
+      player.position.x += (LANES[currentLane] - player.position.x) * (20 * delta);
 
       player.position.y += velocityY * delta;
       velocityY += gravity * delta;
@@ -401,7 +391,6 @@
         shieldMesh.rotation.y += 2 * delta;
       }
 
-      // Update Particles
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.position.x += p.userData.vx * delta;
@@ -418,9 +407,8 @@
       }
 
       const playerBox = new THREE.Box3().setFromObject(player);
-      playerBox.expandByScalar(-0.1);
+      playerBox.expandByScalar(-0.05);
 
-      // Obstacle Collisions
       for (let i = obstacles.length - 1; i >= 0; i--) {
         const obs = obstacles[i];
         obs.position.z += speed * delta;
@@ -429,7 +417,7 @@
 
         if (playerBox.intersectsBox(obsBox)) {
           if (obs.userData.type === 'ramp') {
-            velocityY = jumpPower * 1.1;
+            velocityY = jumpPower * 1.05;
             isGrounded = false;
             playSound('jump');
           } else if (obs.userData.type === 'train') {
@@ -453,13 +441,12 @@
           obstacles.splice(i, 1);
           
           const rand = Math.random();
-          if (rand < 0.5) spawnTrain(-230);
-          else if (rand < 0.8) spawnRamp(-230);
-          else spawnMagnetPowerUp(-230);
+          if (rand < 0.6) spawnTrain(-210);
+          else if (rand < 0.85) spawnRamp(-210);
+          else spawnMagnetPowerUp(-210);
         }
       }
 
-      // Power-up Collisions
       for (let i = powerups.length - 1; i >= 0; i--) {
         const mag = powerups[i];
         mag.position.z += speed * delta;
@@ -476,13 +463,11 @@
         }
       }
 
-      // Coin Collisions & Magnet Attraction
       for (let i = coins.length - 1; i >= 0; i--) {
         const coin = coins[i];
         coin.position.z += speed * delta;
         coin.rotation.z += 3 * delta;
 
-        // Magnet logic: pull coins towards player if active and close enough
         if (isMagnetActive && Math.abs(coin.position.z - player.position.z) < 25) {
           coin.position.x += (player.position.x - coin.position.x) * 10 * delta;
           coin.position.y += (player.position.y - coin.position.y) * 10 * delta;
@@ -500,9 +485,9 @@
           scene.remove(coin);
           coins.splice(i, 1);
           
-          if (Math.random() < 0.5) {
+          if (Math.random() < 0.4) {
             const lane = LANES[Math.floor(Math.random() * LANES.length)];
-            spawnCoin(-230, lane);
+            spawnCoin(-210, lane);
           }
         }
       }
@@ -518,7 +503,7 @@
       let isNewHigh = false;
       if (score > highScore) {
         highScore = score;
-        localStorage.setItem('runner_high_score', highScore);
+        localStorage.setItem('runner_hardcore_high_score', highScore);
         document.getElementById('high-score').innerText = highScore;
         isNewHigh = true;
       }
@@ -561,8 +546,8 @@
 
       clock.start();
 
-      for (let z = -30; z > -250; z -= 35) {
-        if (Math.random() < 0.5) spawnTrain(z);
+      for (let z = -25; z > -220; z -= 25) {
+        if (Math.random() < 0.65) spawnTrain(z);
         else spawnRamp(z);
 
         const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
