@@ -1,171 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Endless Runner - Precise Collisions</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-      background-color: #000;
-    }
-    #ui {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      color: #fff;
-      font-size: 22px;
-      font-weight: bold;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-      z-index: 10;
-    }
-    #shield-status {
-      margin-top: 5px;
-      font-size: 18px;
-      color: #00d2d3;
-    }
-    #game-over {
-      display: none;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #fff;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.85);
-      padding: 30px;
-      border-radius: 10px;
-      z-index: 20;
-    }
-    #game-over button {
-      padding: 10px 20px;
-      font-size: 18px;
-      font-weight: bold;
-      background-color: #ff4757;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 15px;
-    }
-    #game-over button:hover {
-      background-color: #ff6b81;
-    }
-  </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-</head>
-<body>
-
-  <div id="ui">
-    Score: <span id="score">0</span> | Coins: <span id="coins">0</span>
-    <div id="shield-status">Shield [SPACEBAR]: READY</div>
-  </div>
-
-  <div id="game-over">
-    <h1>GAME OVER</h1>
-    <p>Final Score: <span id="final-score">0</span></p>
-    <p>Coins Collected: <span id="final-coins">0</span></p>
-    <button onclick="resetGame()">Try Again</button>
-  </div>
-
-  <script>
-    const LANES = [-3, 0, 3];
-    let currentLane = 1;
-    let score = 0;
-    let coinsCollected = 0;
-    
-    const INITIAL_SPEED = 30; // Speed in units per second
-    let speed = INITIAL_SPEED;
-    let isGameOver = false;
-
-    // SHIELD & INVULNERABILITY
-    let isShieldActive = false;
-    let shieldCooldown = false;
-    let isInvulnerable = false;
-    let particles = [];
-
-    // JUMP PHYSICS
-    const BASE_Y = 0.9;
-    let velocityY = 0;
-    const gravity = -35;
-    const jumpPower = 14;
-    let isGrounded = true;
-
-    // SCENE SETUP
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1e272e);
-    scene.fog = new THREE.Fog(0x1e272e, 10, 150);
-
-    const clock = new THREE.Clock();
-
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    document.body.appendChild(renderer.domElement);
-
-    // LIGHTS
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambientLight);
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 20, 10);
-    scene.add(dirLight);
-
-    // TRACK
-    const trackGeometry = new THREE.PlaneGeometry(12, 500);
-    const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x3d3d3d });
-    const track = new THREE.Mesh(trackGeometry, trackMaterial);
-    track.rotation.x = -Math.PI / 2;
-    track.position.set(0, -0.05, -200);
-    scene.add(track);
-
-    // RAILS
-    LANES.forEach(x => {
-      const railGeo = new THREE.BoxGeometry(0.2, 0.1, 500);
-      const railMat = new THREE.MeshLambertMaterial({ color: 0x718093 });
-      const rail1 = new THREE.Mesh(railGeo, railMat);
-      const rail2 = new THREE.Mesh(railGeo, railMat);
-      rail1.position.set(x - 0.8, 0.05, -200);
-      rail2.position.set(x + 0.8, 0.05, -200);
-      scene.add(rail1);
-      scene.add(rail2);
-    });
-
-    // PLAYER (Slightly smaller visual/hitbox ratio for fairer collisions)
-    const playerGeo = new THREE.BoxGeometry(0.8, 1.6, 0.8);
-    const playerMat = new THREE.MeshLambertMaterial({ color: 0x00d2d3 });
-    const player = new THREE.Mesh(playerGeo, playerMat);
-    player.position.set(LANES[currentLane], BASE_Y, 0);
-    scene.add(player);
-
-    // SHIELD MESH
-    const shieldGeo = new THREE.SphereGeometry(1.2, 16, 16);
-    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00d2d3, wireframe: true, transparent: true, opacity: 0.8 });
-    const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
-    shieldMesh.visible = false;
-    player.add(shieldMesh);
-
-    camera.position.set(0, 5, 8);
-    camera.lookAt(0, 1.5, -5);
-
-    let obstacles = [];
-    let coins = [];
-
-    function spawnTrain(zPos) {
-      const lane = LANES[Math.floor(Math.random() * LANES.length)];
-      const trainGeo = new THREE.BoxGeometry(2.0, 2.8, 12);
-      const trainMat = new THREE.MeshLambertMaterial({ color: 0xff4757 });
-      const train = new THREE.Mesh(trainGeo, trainMat);
-      train.position.set(lane, 1.4, zPos);
-      train.userData = { type: 'train' };
-      scene.add(train);
-      obstacles.push(train);
-    }
-
-    function spawnRamp(zPos) {
+function spawnRamp(zPos) {
       const lane = LANES[Math.floor(Math.random() * LANES.length)];
       const shape = new THREE.Shape();
       shape.moveTo(0, 0);
@@ -183,6 +16,32 @@
       ramp.userData = { type: 'ramp' };
       scene.add(ramp);
       obstacles.push(ramp);
+    }
+
+    function spawnTunnel(zPos) {
+      // Create an architectural frame archway obstacle structure
+      const tunnelGroup = new THREE.Group();
+      
+      const mat = new THREE.MeshLambertMaterial({ color: 0x718093 });
+      // Left pillar
+      const leftCol = new THREE.Mesh(new THREE.BoxGeometry(1.5, 6, 3), mat);
+      leftCol.position.set(-5.5, 3, 0);
+      // Right pillar
+      const rightCol = new THREE.Mesh(new THREE.BoxGeometry(1.5, 6, 3), mat);
+      rightCol.position.set(5.5, 3, 0);
+      // Top roof beam spanning across
+      const topBeam = new THREE.Mesh(new THREE.BoxGeometry(13, 1.5, 3), mat);
+      topBeam.position.set(0, 6.75, 0);
+
+      tunnelGroup.add(leftCol);
+      tunnelGroup.add(rightCol);
+      tunnelGroup.add(topBeam);
+      
+      tunnelGroup.position.set(0, 0, zPos);
+      tunnelGroup.userData = { type: 'tunnel' };
+      
+      scene.add(tunnelGroup);
+      obstacles.push(tunnelGroup);
     }
 
     function spawnCoin(zPos, lane, height = 0.8) {
@@ -218,11 +77,17 @@
       }
     }
 
+    // SPAWN OBSTACLE HELPER
+    function spawnRandomObstacle(z) {
+      const rand = Math.random();
+      if (rand < 0.45) spawnTrain(z);
+      else if (rand < 0.75) spawnRamp(z);
+      else spawnTunnel(z);
+    }
+
     // INITIAL SPAWNS
-    for (let z = -30; z > -250; z -= 35) {
-      if (Math.random() < 0.6) spawnTrain(z);
-      else spawnRamp(z);
-      
+    for (let z = -30; z > -250; z -= 40) {
+      spawnRandomObstacle(z);
       const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
       for (let c = 0; c < 2; c++) {
         spawnCoin(z - (c * 3), coinLane);
@@ -261,7 +126,6 @@
       shieldCooldown = true;
       isInvulnerable = true;
 
-      // 300ms invulnerability buffer to clear overlapping hitboxes safely
       setTimeout(() => { isInvulnerable = false; }, 300);
 
       document.getElementById('shield-status').innerText = "Shield [SPACEBAR]: RECHARGING...";
@@ -274,7 +138,7 @@
       }, 5000);
     }
 
-    // MAIN LOOP (TIMED WITH CLOCK)
+    // MAIN LOOP
     function animate() {
       if (isGameOver) return;
       requestAnimationFrame(animate);
@@ -285,10 +149,8 @@
       score += Math.floor(speed * delta * 5);
       document.getElementById('score').innerText = score;
 
-      // Frame-rate independent horizontal movement
       player.position.x += (LANES[currentLane] - player.position.x) * (15 * delta);
 
-      // Frame-rate independent jump physics
       player.position.y += velocityY * delta;
       velocityY += gravity * delta;
 
@@ -309,7 +171,6 @@
         p.position.y += p.userData.vy * delta;
         p.position.z += p.userData.vz * delta;
         p.userData.life -= 1.5 * delta;
-
         p.scale.setScalar(Math.max(0, p.userData.life));
 
         if (p.userData.life <= 0) {
@@ -318,9 +179,8 @@
         }
       }
 
-      // Precise Bounding Box Collisions
+      // Collisions
       const playerBox = new THREE.Box3().setFromObject(player);
-      // Slightly shrink player box bounds to avoid ghost hits on edges
       playerBox.expandByScalar(-0.1);
 
       for (let i = obstacles.length - 1; i >= 0; i--) {
@@ -333,7 +193,7 @@
           if (obs.userData.type === 'ramp') {
             velocityY = jumpPower * 1.1;
             isGrounded = false;
-          } else if (obs.userData.type === 'train') {
+          } else if (obs.userData.type === 'train' || obs.userData.type === 'tunnel') {
             if (isShieldActive) {
               createExplosion(obs.position);
               scene.remove(obs);
@@ -350,9 +210,7 @@
         if (obs.position.z > 10) {
           scene.remove(obs);
           obstacles.splice(i, 1);
-          
-          if (Math.random() < 0.6) spawnTrain(-230);
-          else spawnRamp(-230);
+          spawnRandomObstacle(-230);
         }
       }
 
@@ -420,10 +278,8 @@
 
       clock.start();
 
-      for (let z = -30; z > -250; z -= 35) {
-        if (Math.random() < 0.6) spawnTrain(z);
-        else spawnRamp(z);
-
+      for (let z = -30; z > -250; z -= 40) {
+        spawnRandomObstacle(z);
         const coinLane = LANES[Math.floor(Math.random() * LANES.length)];
         spawnCoin(z, coinLane);
       }
