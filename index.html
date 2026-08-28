@@ -69,25 +69,3 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-
-  <div id="ui">
-    Score: <span id="score">0</span> | Coins: <span id="coins">0</span>
-    <div id="shield-status" style="color: #00ff66;">Shield [SPACEBAR]: READY</div>
-    <div id="magnet-status" style="color: #ff9f43;">Magnet: READY</div>
-    <div id="slowmo-status" style="color: #00d2d3;">Slow-Mo: READY</div>
-  </div>
-
-  <div id="stats-panel">
-    High Score: <span id="high-score">0</span>
-  </div>
-
-  <div id="game-over">
-    <h1 style="color: #00ffff; text-shadow: 0 0 10px rgba(0,255,255,0.8);">GAME OVER</h1>
-    <p>Final Score: <span id="final-score">0</span></p>
-    <p>Coins Collected: <span id="final-coins">0</span></p>
-    <p id="new-high-score" style="color: #ffff00; font-weight: bold; display: none; text-shadow: 0 0 8px rgba(255,255,0,0.8);">New High Score!</p>
-    <button onclick="resetGame()">Try Again</button>
-  </div>
-
-  <script>
-    const audioCtx = new (window.AudioContext || window
